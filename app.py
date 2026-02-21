@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from router import route_ticket
 from langchain_openai import ChatOpenAI
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
+import concurrent.futures
+
 
 load_dotenv(".env.local")
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -68,9 +70,7 @@ except Exception as e:
 st.divider()
 
 
-
-st.header("3. ИИ-Анализ и Маршрутизация")
-
+st.header("3. ИИ-Анализ")
 
 try:
     total_tickets = pd.read_sql("SELECT COUNT(*) FROM tickets", engine).iloc[0,0]
@@ -80,19 +80,17 @@ try:
     col1, col2, col3 = st.columns(3)
     col1.metric("Всего обращений", total_tickets)
     col2.metric("Уже обработано", processed_tickets)
-    col3.metric("В очереди", pending_tickets)
+    col3.metric("На очереди", pending_tickets)
 except Exception as e:
     st.warning("Загрузите данные, чтобы увидеть статистику.")
 
 st.divider()
 
-
 if pending_tickets > 0:
     num_to_process = st.slider("Сколько новых тикетов обработать за раз?", min_value=1, max_value=20, value=min(5, pending_tickets))
 
-    if st.button("Запустить ИИ-анализ и Маршрутизацию "):
+    if st.button("Запустить ИИ-анализ"):
         
-
         query_unprocessed = f"""
             SELECT id, description, attachment 
             FROM tickets 
@@ -104,20 +102,37 @@ if pending_tickets > 0:
         
         progress_bar = st.progress(0)
         status_text = st.empty()
-        results_list = []
+        status_text.text(f"Отправка тикетов...")
+        ai_responses = {}
         
-        for index, row in df_unprocessed.iterrows():
-            status_text.text(f"Анализ тикет ID {row['id']}...")
-            
+        def fetch_ai(row):
             img_path = str(row['attachment']).strip() if pd.notna(row['attachment']) else None
             if img_path and img_path.lower() in ['nan', 'none', '']:
                 img_path = None
-                
-            ai_data = analyze_ticket_text(row['description'], image_path=img_path)
-            
-            status_text.text(f"Маршрутизация тикета ID {row['id']}...")
 
-            assigned_name, office = route_ticket(row['id'], engine, ai_data)
+            return row['id'], analyze_ticket_text(row['description'], image_path=img_path)
+
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_ticket = {executor.submit(fetch_ai, row): row for _, row in df_unprocessed.iterrows()}
+            
+            completed_ai = 0
+            for future in concurrent.futures.as_completed(future_to_ticket):
+                ticket_id, ai_data = future.result()
+                ai_responses[ticket_id] = ai_data
+                completed_ai += 1
+                progress_bar.progress(completed_ai / (len(df_unprocessed) * 2)) 
+
+        status_text.text("ИИ завершил работу. Маршрутизация и балансировка нагрузки...")
+        results_list = []
+        current_step = 0
+        
+        for index, row in df_unprocessed.iterrows():
+            tid = row['id']
+            ai_data = ai_responses[tid]
+            
+
+            assigned_name, office = route_ticket(tid, engine, ai_data)
             
 
             insert_query = text("""
@@ -125,7 +140,6 @@ if pending_tickets > 0:
                 VALUES (:tid, :typ, :sen, :pri, :lan, :sum, :mgr)
             """)
             
-
             manager_id_query = text(f"SELECT id FROM managers WHERE full_name = '{assigned_name}'")
             
             with engine.begin() as conn:
@@ -133,26 +147,28 @@ if pending_tickets > 0:
                 mgr_id = mgr_id_result[0] if mgr_id_result else None
                 
                 conn.execute(insert_query, {
-                    "tid": row['id'], "typ": ai_data['ticket_type'], "sen": ai_data['sentiment'],
+                    "tid": tid, "typ": ai_data['ticket_type'], "sen": ai_data['sentiment'],
                     "pri": ai_data['priority'], "lan": ai_data['language'], "sum": ai_data['summary'],
                     "mgr": mgr_id
                 })
-            
-            ai_data['ticket_id'] = row['id']
+
+            ai_data['ticket_id'] = tid
             ai_data['assigned_manager'] = assigned_name
             ai_data['office'] = office
             results_list.append(ai_data)
             
-            progress_bar.progress((index + 1) / len(df_unprocessed))
+            current_step += 1
+
+            progress_bar.progress(0.5 + (current_step / (len(df_unprocessed) * 2)))
             
-        status_text.success("Цикл обработки завершен")
+        status_text.success(f"Обработка завершена {len(df_unprocessed)} тикетов.")
         st.subheader("Результаты текущей сессии")
         st.dataframe(pd.DataFrame(results_list))
         
         if st.button("Обновить статистику"):
             st.rerun()
 else:
-    st.success("Все доступные тикеты успешно распределены по менеджерам!")
+    st.success("Все доступные тикеты успешно распределены")
 
 
 st.header("4. Итоговое распределение обращений")
@@ -232,4 +248,4 @@ if 'df_final_results' in locals() and not df_final_results.empty:
         else:
             st.warning("Пожалуйста, введите вопрос.")
 else:
-    st.info("Сначала обработайте тикеты в Секции 3, чтобы ассистенту было с чем работать.")
+    st.info("Сначала обработайте тикеты, чтобы ассистенту было с чем работать.")

@@ -6,62 +6,45 @@ from dotenv import load_dotenv
 
 
 load_dotenv(".env.local")
-my_api_key = os.getenv("OPENAI_API_KEY")
-my_base_url = os.getenv("BASE_URL")
+client = OpenAI()
 
-if not my_api_key:
-    print("WARNING: .env.local failed.")
-
-
-client = OpenAI(
-    base_url = my_base_url,
-    api_key = my_api_key,
-)
 
 class TicketAnalysis(BaseModel):
     ticket_type: str = Field(
-        description="Категория обращения. Строго одно из: Жалоба, Смена данных, Консультация, Претензия, Неработоспособность приложения, Мошеннические действия, Спам"
+        description="Строго одно из: Жалоба, Смена данных, Консультация, Претензия, Неработоспособность приложения, Мошеннические действия, Спам"
     )
     sentiment: str = Field(
-        description="Эмоциональный фон. Строго одно из: Позитивный, Нейтральный, Негативный"
+        description="Строго одно из: Позитивный, Нейтральный, Негативный"
     )
     priority: int = Field(
-        description="Оценка срочности обработки по шкале от 1 до 10. 10 = максимальная срочность."
+        description="Срочность от 1 до 10. 10 = максимальная."
     )
     language: str = Field(
-        description="Язык обращения. Строго одно из: KZ, ENG, RU. Если непонятно, RU."
+        description="Строго: KZ, ENG, RU. По умолчанию RU."
     )
     summary: str = Field(
-        description="Краткая выжимка сути обращения (1 предложение) с учетом текста и прикрепленных скриншотов + дальнейшие этичные рекомендации менеджеру."
+        description="Краткая суть (1 предложение) + рекомендация."
     )
 
 
 def encode_image(image_path):
-    # Uses base64 to decode the images and take them into account
     try:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
-    except Exception as e:
-        print(f"Error reading image {image_path}: {e}")
+    except Exception:
         return None
 
+
 def analyze_ticket_text(description_text: str, image_path: str = None) -> dict:
-    # Sends the text AND the image (if it exists) to ChatGPT.
-    # Now equipped to handle tickets with no text at all.
-    system_prompt = """
-    Ты — ИИ-ассистент Freedom Bank. 
-    Проанализируй текст обращения клиента и прикрепленный скриншот (если есть).
-    Выяви суть проблемы, определи категорию, язык и приоритет.
-    """
+
+    system_prompt = "Ты ИИ-ассистент Freedom Bank. Выяви проблему по тексту и/или скриншоту."
 
     content = []
     
-
     if description_text and str(description_text).strip() != "" and str(description_text).lower() != "nan":
-        content.append({"type": "text", "text": f"Текст обращения: {description_text}"})
+        content.append({"type": "text", "text": str(description_text)})
     else:
-        content.append({"type": "text", "text": "Текст обращения отсутствует. Проанализируй проблему и заполни данные исключительно по прикрепленному скриншоту."})
-
+        content.append({"type": "text", "text": "Анализируй только по скриншоту."})
 
     if image_path and os.path.exists(image_path):
         base64_image = encode_image(image_path)
@@ -69,7 +52,8 @@ def analyze_ticket_text(description_text: str, image_path: str = None) -> dict:
             content.append({
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:image/jpeg;base64,{base64_image}"
+                    "url": f"data:image/jpeg;base64,{base64_image}",
+                    "detail": "low" 
                 }
             })
 
@@ -86,11 +70,11 @@ def analyze_ticket_text(description_text: str, image_path: str = None) -> dict:
         return response.choices[0].message.parsed.model_dump()
         
     except Exception as e:
-        print(f"AI Processing Error: {e}")
+        print(f"AI Error: {e}")
         return {
             "ticket_type": "Консультация",
             "sentiment": "Нейтральный",
-            "priority": 5,
+            "priority": 1,
             "language": "RU",
-            "summary": "Ошибка ИИ при анализе."
+            "summary": "Ошибка ИИ."
         }
