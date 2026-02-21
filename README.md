@@ -22,8 +22,9 @@ pip install -r requirements.txt
 Create a .env.local file in root directory and add your API keys
 
 ```bash
-DATABASE_URL=your_database_url
-OPENAI_API_KEY=your_api_key
+DATABASE_URL = "your_database_url"
+OPENAI_API_KEY = "your_api_key"
+BASE_URL = "https://api.openai.com/v1"
 ```
 
 **4. Run**
