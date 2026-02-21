@@ -20,11 +20,11 @@ if not DATABASE_URL:
     st.stop()
 
 st.set_page_config(page_title="Freedom Ticket Routing", layout="wide")
-st.title("Freedom Intelligent Routing Engine")
+st.title("Intelligent CRM Routing")
 
 
-st.header("1. Загрузка новых обращений")
-uploaded_file = st.file_uploader("Загрузите файл tickets.csv", type=["csv"])
+st.header("Загрузка новых обращений")
+uploaded_file = st.file_uploader("", type=["csv"])
 
 if uploaded_file is not None:
     try:
@@ -46,11 +46,11 @@ if uploaded_file is not None:
 st.divider()
 
 
-st.header("2. Текущая база обращений")
+st.header("Текущая база обращений")
 try:
     df_db_tickets = pd.read_sql("SELECT * FROM tickets", engine)
     if not df_db_tickets.empty:
-        with st.expander("Посмотреть сырые данные (Raw Data)"):
+        with st.expander("Просмотреть сырые данные"):
             st.dataframe(df_db_tickets, height=200)
             
         col1, col2 = st.columns(2)
@@ -60,7 +60,7 @@ try:
         with col2:
             city_counts = df_db_tickets['city'].value_counts().reset_index()
             city_counts.columns = ['city', 'count']
-            fig_city = px.bar(city_counts, x='city', y='count', title='Количество обращений по городам')
+            fig_city = px.bar(city_counts, x='city', y='count', title='Количество обращений по населённым пунктам/городам')
             st.plotly_chart(fig_city, use_container_width=True)
     else:
         st.info("База данных обращений пуста. Загрузите CSV файл выше.")
@@ -70,7 +70,7 @@ except Exception as e:
 st.divider()
 
 
-st.header("3. ИИ-Анализ")
+st.header("Анализ")
 
 try:
     total_tickets = pd.read_sql("SELECT COUNT(*) FROM tickets", engine).iloc[0,0]
@@ -89,7 +89,7 @@ st.divider()
 if pending_tickets > 0:
     num_to_process = st.slider("Сколько новых тикетов обработать за раз?", min_value=1, max_value=20, value=min(5, pending_tickets))
 
-    if st.button("Запустить ИИ-анализ"):
+    if st.button("Запустить анализ"):
         
         query_unprocessed = f"""
             SELECT id, description, attachment 
@@ -171,7 +171,7 @@ else:
     st.success("Все доступные тикеты успешно распределены")
 
 
-st.header("4. Итоговое распределение обращений")
+st.header("Итоговое распределение обращений")
 st.write("Связь: Клиент -> Аналитика ИИ -> Назначенный менеджер")
 
 try:
@@ -199,7 +199,7 @@ try:
         st.dataframe(df_final_results, use_container_width=True, height=400)
         
 
-        csv = df_final_results.to_csv(index=False).encode('utf-8')
+        csv = df_final_results.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
             label="Скачать результаты (CSV)",
             data=csv,
@@ -214,8 +214,8 @@ except Exception as e:
 
 
 st.divider()
-st.header("5. ИИ-Аналитик")
-st.write("Задавайте любые вопросы по распределенным тикетам на естественном языке.")
+st.header("ИИ-Аналитик")
+st.write("Задавайте любые вопросы по распределенным тикетам.")
 
 if 'df_final_results' in locals() and not df_final_results.empty:
     
