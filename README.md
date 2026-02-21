@@ -18,9 +18,11 @@ pip install -r requirements.txt
 ```
 
 **3. Add your environment variables** 
+
 Create a .env.local file in root directory and add your API keys
 
 ```bash
+DATABASE_URL=your_database_url
 OPENAI_API_KEY=your_api_key
 ```
 
