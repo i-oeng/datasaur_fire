@@ -6,8 +6,8 @@
 
 **1. Clone the repository**
 ```bash
-git clone [https://github.com/YourUsername/freedom-routing-engine.git](https://github.com/YourUsername/freedom-routing-engine.git)
-cd freedom-routing-engine
+git clone https://github.com/i-oeng/datasaur_fire.git
+cd datasaur_fire
 ```
 **2. Set up the virtual environment & install dependencies**
 
