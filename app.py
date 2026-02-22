@@ -87,7 +87,7 @@ except Exception as e:
 st.divider()
 
 if pending_tickets > 0:
-    num_to_process = st.slider("Сколько новых тикетов обработать за раз?", min_value=1, max_value=20, value=min(5, pending_tickets))
+    num_to_process = st.slider("Сколько новых тикетов обработать за раз?", min_value=1, max_value=100, value=min(5, pending_tickets))
 
     if st.button("Запустить анализ"):
         
