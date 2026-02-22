@@ -19,18 +19,18 @@ pip install -r requirements.txt
 
 **3. Add your environment variables** 
 
-Create a .env.local file in root directory and add your API keys
+Create a .env.local file in root directory and add your API keys.
 
 ```bash
-DATABASE_URL = "your_database_url"
+DATABASE_URL = "your_sql_database_url"
 OPENAI_API_KEY = "your_api_key"
 BASE_URL = "https://api.openai.com/v1"
 ```
 
 **4. Run**
 ```bash
-py database.py
-py load.py
+py database.py # Creates dataframes
+py load.py # Loads dataset (managers, business_units)
 streamlit run app.py
 ```
 
