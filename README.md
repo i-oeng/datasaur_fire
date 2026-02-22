@@ -29,6 +29,8 @@ BASE_URL = "https://api.openai.com/v1"
 
 **4. Run**
 ```bash
+py database.py
+py load.py
 streamlit run app.py
 ```
 
