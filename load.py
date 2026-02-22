@@ -39,26 +39,6 @@ def load_csv_to_db():
     })
     df_managers.to_sql("managers", con=engine, if_exists="append", index=False)
 
-
-    print("Loading Tickets...")
-    df_tickets = pd.read_csv("C:/Users/user/Desktop/FIRE/data/tickets.csv")
-    df_tickets.columns = df_tickets.columns.str.strip()
-
-    df_tickets = df_tickets.rename(columns={
-        "GUID клиента": "client_guid",
-        "Пол клиента": "gender",            
-        "Дата рождения": "birth_date",
-        "Сегмент клиента": "segment",       
-        "Описание": "description",
-        "Вложения": "attachment",
-        "Страна": "country",
-        "Область": "region",
-        "Населённый пункт": "city",          
-        "Улица": "street",
-        "Дом": "building"
-    })
-    df_tickets.to_sql("tickets", con=engine, if_exists="append", index=False)
-
     end_time = time.time()
     print(f"Data ingestion complete in {round(end_time - start_time, 2)} seconds!")
 
